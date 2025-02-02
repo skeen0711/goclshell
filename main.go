@@ -9,24 +9,33 @@ import (
 )
 
 func main() {
-	fmt.Println("Coding Challenges: Build your own Shell in Go")
 	for {
-		fmt.Print("goShell> ")
+		fmt.Print("ccsh> ")
 
 		reader := bufio.NewReader(os.Stdin)
 		input, _ := reader.ReadString('\n')
+
 		input = strings.TrimSpace(input)
-		if input == "exit" || input == "q" {
-			break
+
+		if input == "" {
+			continue
 		}
-		cmd := exec.Command(input)
+
+		parts := strings.Fields(input)
+		var command = parts[0]
+		var args = parts[1:]
+
+		if command == "exit" {
+			os.Exit(0)
+		}
+
+		cmd := exec.Command(command, args...)
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		cmd.Run()
-		_, err := exec.LookPath(input)
+
+		err := cmd.Run()
 		if err != nil {
-			fmt.Println("Command not found, try again:")
+			fmt.Println(err)
 		}
-		cmd.Wait()
 	}
 }
