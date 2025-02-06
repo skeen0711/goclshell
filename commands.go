@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 )
 
-// pwd function: Outputs the current working directory
-func pwd(w *io.PipeWriter) {
+// `pwdCommand` outputs the current working directory
+func Pwd(w *io.PipeWriter) {
 	defer w.Close()
 	dir, err := os.Getwd()
 	if err != nil {
@@ -16,7 +17,7 @@ func pwd(w *io.PipeWriter) {
 	fmt.Fprintln(w, dir)
 }
 
-// changeDirectory function: Changes the current working directory
+// `changeDirectory` changes the current directory based on input arguments
 func changeDirectory(args []string) {
 	var path string
 	var err error
@@ -29,5 +30,14 @@ func changeDirectory(args []string) {
 	err = os.Chdir(path)
 	if err != nil {
 		fmt.Printf("Error changing directory: %v\n", err)
+	}
+}
+
+// `notifyCmds` sends a signal to all running commands
+func notifyCmds(cmds []*exec.Cmd, sig os.Signal) {
+	for _, cmd := range cmds {
+		if cmd.Process != nil {
+			cmd.Process.Signal(sig)
+		}
 	}
 }
