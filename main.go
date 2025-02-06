@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strings"
@@ -21,57 +22,58 @@ func main() {
 			continue
 		}
 
-		parts := strings.Fields(input)
-		var command = parts[0]
-		var args = parts[1:]
+		commands := strings.Split(input, "|")
+		var cmds []*exec.Cmd
+		var output io.ReadCloser
 
-		switch command {
-		case "exit":
-			os.Exit(0)
+		for _, command := range commands {
+			command = strings.TrimSpace(command)
+			parts := strings.Fields(command)
+			var command = parts[0]
+			var args = parts[1:]
 
-		case "cd":
-			var path string
-			var err error
+			switch command {
+			case "exit", "q":
+				os.Exit(0)
 
-			if len(args) > 0 {
-				path = args[0]
-			} else {
-				path, _ = os.UserHomeDir()
-			}
-			err = os.Chdir(path)
-			if err != nil {
-				fmt.Printf("%v\n", err)
-			}
+			case "cd":
+				changeDirectory(args)
 
-		case "pwd":
-			dir, _ := os.Getwd()
-			fmt.Println(dir)
-
-		default:
-			cmdList := strings.Split(input, "|")
-			for _, cmd := range cmdList {
-				parts := strings.Fields(cmd)
-				pCommand := parts[0]
-				args = parts[1:]
-
-				pCommand = strings.TrimSpace(pCommand)
-				pArgs := strings.TrimSpace(strings.Join(args, " "))
-				fCom := exec.Command(pCommand, pArgs)
-				fCom.Stdout = os.Stdout
-				fCom.Stderr = os.Stderr
-
-				err := fCom.Run()
-				if err != nil {
-					fmt.Println(err)
+			case "pwd":
+				pr, pw := io.Pipe()
+				go pwd(pw)
+				if len(commands) == 1 {
+					io.Copy(os.Stdout, pr)
+				} else {
+					output = pr
 				}
-			}
-			cmd := exec.Command(command, args...)
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
 
-			err := cmd.Run()
-			if err != nil {
-				fmt.Println(err)
+			default:
+				// Create system command
+				cmd := exec.Command(command, args...)
+				cmd.Stderr = os.Stderr
+				cmds = append(cmds, cmd)
+
+				if output != nil {
+					cmd.Stdin = output
+				}
+				output, _ = cmd.StdoutPipe()
+			}
+		}
+
+		if len(cmds) > 0 {
+			cmds[len(cmds)-1].Stdout = os.Stdout
+		}
+
+		for _, cmd := range cmds {
+			cmd.Start()
+		}
+
+		for _, cmd := range cmds {
+			if err := cmd.Wait(); err != nil {
+				if cmd.ProcessState.ExitCode() == -1 {
+					fmt.Printf("command not found: %s\n", cmd.Path)
+				}
 			}
 		}
 	}
