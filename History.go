@@ -11,6 +11,12 @@ type History struct {
 	file     *os.File
 }
 
+func (h *History) ListCommands() {
+	for _, cmd := range h.commands {
+		println(cmd)
+	}
+}
+
 func NewHistory() *History {
 	path, _ := os.UserHomeDir()
 	var history_filename = filepath.Join(path, ".ccsh_history")
