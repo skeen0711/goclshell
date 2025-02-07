@@ -12,7 +12,7 @@ func main() {
 	cmds := make([]*exec.Cmd, 0)
 	handleSignals(ctx, cancel, &cmds)
 
-	// Setup history feature
+	// Create a history
 	history := NewHistory()
 
 	// Command execution loop
